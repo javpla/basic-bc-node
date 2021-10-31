@@ -1,10 +1,16 @@
-import { Block, Blockchain } from "./types";
+import { Blockchain, Transaction } from "./types";
 
-const bc = new Blockchain(4);
-bc.addBlock(new Block(Date.now(), { amount: 10 }, bc.getLatestBlock().getHash()))
-bc.addBlock(new Block(Date.now(), { amount: 200 }, bc.getLatestBlock().getHash()))
-bc.addBlock(new Block(Date.now(), { amount: 300 }, bc.getLatestBlock().getHash()))
-bc.addBlock(new Block(Date.now(), { amount: 400 }, bc.getLatestBlock().getHash()))
+const bc = new Blockchain(0);
 
-console.log(JSON.stringify(bc, null, 2));
-console.log('Is blockchain valid: ' + bc.isChainValid());
+console.log('Starting miner...');
+const minerAddress = 'miner';
+bc.minePendingTransactions(minerAddress);
+
+bc.inspect();
+
+bc.addTransaction(new Transaction(minerAddress, 'a', 100));
+bc.addTransaction(new Transaction('a', 'b', 100));
+bc.addTransaction(new Transaction('b', 'a', 50));
+bc.minePendingTransactions(minerAddress);
+
+bc.inspect();

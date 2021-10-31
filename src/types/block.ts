@@ -1,31 +1,34 @@
 import { createHash } from 'crypto';
+import { Transaction } from './transaction';
 
 const SHA256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
 export class Block {
-  private nonce: number = 0;
+  private _nonce: number = 0;
 
-  private hash: string = '';
+  private _hash: string = '';
 
-  constructor(private timestamp: number, private data: any, readonly previousHash: string) {}
+  constructor(private _timestamp: number, private _transactions: Transaction[], readonly _previousHash: string) { }
 
-  public getHash(): string{
-    return this.hash;
+  public get hash(): string {
+    return this._hash;
+    
   }
-  public getPreviousHash(): string {
-    return this.previousHash;
+  public get previousHash(): string {
+    return this._previousHash;
+  }
+  public get transactions(): Transaction[] {
+    return this._transactions;
   }
 
   calculateHash(previousHash: string): string {
-    return SHA256(previousHash + this.timestamp + JSON.stringify(this.data) + this.nonce).toString();
+    return SHA256(previousHash + this._timestamp + JSON.stringify(this._transactions) + this._nonce).toString();
   }
 
   mineBlock(difficulty: number): void {
-    while (this.hash.substring(0, difficulty) !== Array(difficulty + 1).join('0')) {
-      this.nonce++;
-      this.hash = this.calculateHash(this.previousHash);
+    while (this._hash.substring(0, difficulty) !== Array(difficulty + 1).join('0')) {
+      this._nonce++;
+      this._hash = this.calculateHash(this._previousHash);
     }
-
-    console.log('Block mined: ' + this.hash);
   }
 }
