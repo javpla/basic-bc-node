@@ -27,7 +27,11 @@
   },
   "homepage": "https://github.com/javpla/basic-bc-node#readme",
   "devDependencies": {
+    "@types/elliptic": "^6.4.13",
     "@types/node": "^16.11.6",
     "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "elliptic": "^6.5.4"
   }
 }

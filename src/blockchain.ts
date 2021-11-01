@@ -11,25 +11,35 @@ export class Blockchain {
   private _balances = new Map<string, number>([['', 1e6]]);
 
   constructor(private difficulty = 1) {
-    this.chain.push(new Block(Date.now(), [new Transaction('', '', 0)], ''));
+    const genesisBlock = new Block(Date.now(), [new Transaction('', '', 0)], '');
+    genesisBlock.mineBlock(0);
+    this.chain.push(genesisBlock);
   }
 
   getLatestBlock(): Block {
     return this.chain[this.chain.length - 1];
   }
 
-  minePendingTransactions(rewardAddress: string): void {
+  minePendingTransactions(rewardAddress: string): Block {
     this.addTransaction(new Transaction('', rewardAddress, this.miningReward));
     const b = new Block(Date.now(), this._pendingTransactions, this.getLatestBlock().hash); // TODO there should be a limit on length of transactions to be included
     b.mineBlock(this.difficulty);
-    console.log('Block successfully mined: ', b.hash);
 
     this.chain.push(b);
+    this._pendingTransactions = [];
+
+    return b;
   }
 
   addTransaction(t: Transaction): void {
-    this._pendingTransactions.push(t);
+    if (!t.to) {
+      throw new Error(`Transaction must include a valid 'to' address`);
+    }
+    if (!t.isValid()) {
+      throw new Error(`Invalid transaction`);
+    }
 
+    // check sufficient balances and update them
     const balanceFrom = this._balances.get(t.from);
     if (balanceFrom === undefined || balanceFrom < t.amount) {
       throw new Error('Insufficient balance in source address');
@@ -42,6 +52,8 @@ export class Blockchain {
     } else {
       this._balances.set(t.to, t.amount + balanceTo);
     }
+
+    this._pendingTransactions.push(t);
   }
 
   calculateBalances(addresses: Set<string>): Map<string, number> {
@@ -74,21 +86,25 @@ export class Blockchain {
     return this._balances.get(address) ?? 0;
   }
 
-  isChainValid(): boolean {
+  assertValidChain(): void {
     // check relation between blocks
     for (let i = 1; i < this.chain.length; i++) {
       const currentBlock = this.chain[i];
       const previousBlock = this.chain[i - 1];
 
-      if (currentBlock.hash != currentBlock.calculateHash(previousBlock.hash)) {
-        return false;
+      if (!currentBlock.hasValidTransactions()) {
+        throw new Error(`Invalid transactions in block ${i}`);
+      }
+
+      if (currentBlock.hash !== currentBlock.calculateHash()) {
+        console.error(`currentBlock.hash: ${currentBlock.hash}`);
+        console.error(`currentBlock.calculateHash(): ${currentBlock.calculateHash()}`);
+        throw new Error(`Block ${i} has a wrong hash`);
       }
       if (currentBlock.previousHash !== previousBlock.hash) {
-        return false;
+        throw new Error(`Block ${i} has a wrong hash for the previous block`);
       }
     }
-
-    return true;
   }
 
   assertBalance(): void {
@@ -102,10 +118,17 @@ export class Blockchain {
   }
 
   inspect(): void {
-    const transactions = this.chain.reduce<Transaction[]>((transactions, b) => {
-      return [...transactions, ...b.transactions];
-    }, new Array<Transaction>());
-    console.log(`Transactions: `, inspect(transactions));
-    console.log(`Balances:`, inspect(this._balances));
+    console.log(`\n----------Blockchain----------`);
+    console.log(inspect(this.chain, true, Infinity, true));
+    console.log(`Balances:`, inspect(this._balances, true, Infinity, true));
+
+    this.assertValidChain();
+    try {
+      this.assertValidChain();
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : JSON.stringify(e);
+      console.warn(`Chain is invalid: `, errMsg);
+    }
+    console.log();
   }
 }
